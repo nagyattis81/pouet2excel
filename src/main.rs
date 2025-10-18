@@ -1,4 +1,8 @@
+mod functions;
+mod structs;
+
 use flate2::read::GzDecoder;
+use functions::from_str_opt::from_str_opt;
 use serde::de::{Deserializer, Error as DeError};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -8,65 +12,12 @@ use std::{
     io::{copy, BufReader},
     path::Path,
 };
-
-#[allow(dead_code)]
-#[derive(Debug, Deserialize)]
-struct PouetData {
-    latest: Option<PouetDataLatest>,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Deserialize)]
-struct PouetDataLatest {
-    prods: Option<PouetDataProd>,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Deserialize)]
-struct PouetDataProd {
-    filename: Option<String>,
-    url: Option<String>,
-    size_in_bytes: Option<u32>,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Party {
-    pub name: Option<String>,
-    pub web: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Group {
-    #[serde(deserialize_with = "from_str_opt")]
-    pub id: Option<u32>,
-    pub name: Option<String>,
-    pub acronym: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Placement {
-    pub party: Option<Party>,
-    #[serde(deserialize_with = "from_str_opt")]
-    pub ranking: Option<u32>,
-    #[serde(deserialize_with = "from_str_opt")]
-    pub year: Option<u32>,
-    pub compo_name: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Platform {
-    pub name: Option<String>,
-    pub icon: Option<String>,
-    pub slug: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct DownloadLink {
-    #[serde(rename = "type")]
-    pub download_link_type: Option<String>,
-    pub link: Option<String>,
-}
+use structs::download_link::DownloadLink;
+use structs::group::Group;
+use structs::party::Party;
+use structs::placement::Placement;
+use structs::platform::Platform;
+use structs::pouet_data::PouetData;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct User {
@@ -139,61 +90,28 @@ pub struct DumpData {
     pub prods: Option<Vec<Prod>>,
 }
 
-// Az elvárt értékek listája a hibaüzenethez.
-const ALLOWED_TYPES: &[&str] = &[
-    "demo",
-    "64k",
-    "4k",
-    "invitation",
-    "game",
-    "music",
-    "wild",
-    "intro",
-];
+const ALLOWED_TYPES: &[&str] = &[];
 
 fn from_comma_separated_prod_types<'de, D>(
     deserializer: D,
 ) -> Result<Option<Vec<ProdType>>, D::Error>
 where
-    D: Deserializer<'de>, // <-- ITT IS FONTOS
+    D: Deserializer<'de>,
 {
-    // Beolvassuk Option<String>-ként (lehet None is).
     let s = Option::<String>::deserialize(deserializer)?;
     let Some(s) = s else { return Ok(None) };
 
-    // "demo,invitation" -> ["demo", "invitation"] -> Vec<ProdType>
     let parts = s
         .split(',')
         .map(|p| p.trim())
         .filter(|p| !p.is_empty())
         .map(|p| {
-            // Trükk: a serde-vel egyszerűen parse-oljuk az enumot,
-            // mintha egy önálló string JSON lenne: "\"demo\"" -> ProdType::Demo
             serde_json::from_str::<ProdType>(&format!("\"{}\"", p))
                 .map_err(|_| DeError::unknown_variant(p, ALLOWED_TYPES))
         })
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(Some(parts))
-}
-
-fn from_str_opt<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-    T: std::str::FromStr,
-    <T as std::str::FromStr>::Err: std::fmt::Display,
-{
-    let opt = Option::<String>::deserialize(deserializer)?;
-    match opt {
-        Some(s) => {
-            if s.trim().is_empty() {
-                Ok(None)
-            } else {
-                s.parse::<T>().map(Some).map_err(serde::de::Error::custom)
-            }
-        }
-        None => Ok(None),
-    }
 }
 
 async fn fetch_pouet_data() -> Result<PouetData, Box<dyn Error>> {
