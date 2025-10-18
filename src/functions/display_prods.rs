@@ -12,7 +12,6 @@ pub fn display_prods(json_filename: String) -> Result<(), Box<dyn Error>> {
             return Ok(());
         }
     };
-    let pretty = serde_json::to_string_pretty(&dump.prods)?;
-    println!("{}", pretty);
+    println!("{}", dump.prods.as_ref().map_or(0, |v| v.len()));
     Ok(())
 }
