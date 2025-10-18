@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("✅ Download {}", filename);
 
     decompress_gzip_file(&filename, &json_filename)?;
-    println!("✅ Decompressed {}", json_filename);
+    println!("✅ Decompress {}", json_filename);
 
     let _ = export_prods(json_filename);
 
