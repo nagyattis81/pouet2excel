@@ -1,5 +1,7 @@
 use std::{error::Error, fs::File, io::BufReader};
 
+use serde_json::json;
+
 use crate::structs::dump_data::DumpData;
 
 pub fn display_prods(json_filename: String) -> Result<(), Box<dyn Error>> {
@@ -12,6 +14,20 @@ pub fn display_prods(json_filename: String) -> Result<(), Box<dyn Error>> {
             return Ok(());
         }
     };
-    println!("{}", dump.prods.as_ref().map_or(0, |v| v.len()));
+
+    if let Some(prods) = &dump.prods {
+        let names: Vec<_> = prods
+            .iter()
+            .map(|p| {
+                json!({
+                    "name": p.name,
+                    "credits": p.credits
+                })
+            })
+            .collect();
+        let pretty = serde_json::to_string_pretty(&json!(names))?;
+        println!("{}", pretty);
+    }
+
     Ok(())
 }
