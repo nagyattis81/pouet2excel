@@ -23,6 +23,8 @@ pub struct Prod {
     pub screenshot: Option<String>,
     #[serde(rename = "releaseDate")]
     pub release_date: Option<String>,
+    #[serde(rename = "addedDate")]
+    pub added_date: Option<String>,
     #[serde(deserialize_with = "from_str_opt")]
     pub voteup: Option<u32>,
     #[serde(deserialize_with = "from_str_opt")]

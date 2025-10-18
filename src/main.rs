@@ -4,9 +4,8 @@ mod structs;
 use std::{error::Error, path::Path};
 
 use crate::functions::{
-    decompress_gzip_file::decompress_gzip_file, display_prods::display_prods,
-    download_to_file::download_to_file, fetch_pouet_data::fetch_pouet_data,
-    latest_dump::latest_dump,
+    decompress_gzip_file::decompress_gzip_file, download_to_file::download_to_file,
+    export_prods::export_prods, fetch_pouet_data::fetch_pouet_data, latest_dump::latest_dump,
 };
 
 #[tokio::main]
@@ -25,7 +24,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     if Path::new(&json_filename).exists() {
         println!("ℹ️  Found existing file: {}", json_filename);
-        let _ = display_prods(json_filename.to_string());
+        let _ = export_prods(json_filename.to_string());
         return Ok(());
     }
 
@@ -35,7 +34,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     decompress_gzip_file(&filename, &json_filename)?;
     println!("✅ Decompressed {}", json_filename);
 
-    let _ = display_prods(json_filename);
+    let _ = export_prods(json_filename);
 
     Ok(())
 }
