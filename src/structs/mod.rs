@@ -1,4 +1,6 @@
+pub mod credit;
 pub mod download_link;
+pub mod dump_data;
 pub mod group;
 pub mod party;
 pub mod placement;
@@ -6,3 +8,6 @@ pub mod platform;
 pub mod pouet_data;
 pub mod pouet_data_latest;
 pub mod pouet_data_prod;
+pub mod prod;
+pub mod prod_type;
+pub mod user;
