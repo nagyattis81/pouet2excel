@@ -1,0 +1,93 @@
+name: Build (Linux, macOS, Windows)
+
+on:
+    push:
+        branches: ["*"]
+        tags: ["v*.*.*"]
+    workflow_dispatch:
+
+jobs:
+    build:
+        name: Build ${{ matrix.os }}
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ubuntu-latest, macos-latest, windows-latest]
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Set up Rust (stable)
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Cache cargo
+              uses: Swatinem/rust-cache@v2
+
+            - name: Build release
+              run: cargo build --release
+              shell: bash
+
+            - name: Strip (Linux)
+              if: runner.os == 'Linux'
+              run: strip target/release/pouet2excel
+              shell: bash
+
+            - name: Strip (macOS)
+              if: runner.os == 'macOS'
+              run: strip -x target/release/pouet2excel
+              shell: bash
+
+            - name: Create package
+              shell: bash
+              run: |
+                  BIN_NAME="pouet2excel"
+                  VERSION="${GITHUB_REF_NAME}"
+
+                  if [ "${{ runner.os }}" = "Windows" ]; then
+                    SRC="target/release/${BIN_NAME}.exe"
+                    OUT="${BIN_NAME}-windows-${{ runner.arch || 'x64' }}.zip"
+                    7z a "$OUT" "$SRC"
+                  elif [ "${{ runner.os }}" = "macOS" ]; then
+                    SRC="target/release/${BIN_NAME}"
+                    OUT="${BIN_NAME}-macos-${{ runner.arch || 'x64' }}.tar.gz"
+                    tar -czf "$OUT" -C "$(dirname "$SRC")" "$(basename "$SRC")"
+                  else
+                    SRC="target/release/${BIN_NAME}"
+                    OUT="${BIN_NAME}-linux-${{ runner.arch || 'x64' }}.tar.gz"
+                    tar -czf "$OUT" -C "$(dirname "$SRC")" "$(basename "$SRC")"
+                  fi
+                  echo "PACKAGE_NAME=$OUT" >> $GITHUB_ENV
+
+            - name: Artifact upload
+              uses: actions/upload-artifact@v4
+              env:
+                  PACKAGE_NAME: ${{ env.PACKAGE_NAME }}
+              with:
+                  name: ${{ env.PACKAGE_NAME }}
+                  path: ${{ env.PACKAGE_NAME }}
+                  if-no-files-found: error
+
+    release:
+        name: Create GitHub Release
+        needs: build
+        runs-on: ubuntu-latest
+        if: startsWith(github.ref, 'refs/tags/')
+        steps:
+            - name: Download - all artifact
+              uses: actions/download-artifact@v4
+              with:
+                  path: dist
+
+            - name: List files (debug)
+              run: ls -R dist
+
+            - name: Create release
+              uses: softprops/action-gh-release@v2
+              with:
+                  files: |
+                      dist/**/pouet2excel-*.zip
+                      dist/**/pouet2excel-*.tar.gz
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
