@@ -1,116 +1,59 @@
 name: Build & Publish Excel to Pages
 
 on:
-    push:
-        branches: [master, main]
-    workflow_dispatch:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
 
 permissions:
-    contents: read
-    pages: write
-    id-token: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-    group: "pages"
-    cancel-in-progress: true
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
-    build:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-            - name: Install stable Rust
-              uses: dtolnay/rust-toolchain@stable
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
 
-            - name: Cache Cargo
-              uses: Swatinem/rust-cache@v2
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
 
-            - name: Build & run (generate Excel)
-              run: |
-                  cargo build --release
-                  cargo run --release
+      - name: Build & run (generate Excel)
+        run: |
+          cargo build --release
+          cargo run --release --bin pouet2excel
 
-            - name: Collect generated Excel(s) and build site
-              shell: bash
-              run: |
-                  set -euo pipefail
-                  mkdir -p site
+      - name: Build site (Rust + Tera)
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          cargo run --release --bin build_site
 
-                  # Mozgassuk a gyökérben létrehozott .xlsx fájlokat a site-ba
-                  shopt -s nullglob
-                  XLSX_FILES=( *.xlsx )
-                  if (( ${#XLSX_FILES[@]} == 0 )); then
-                    echo "No .xlsx generated in repo root!"
-                    exit 1
-                  fi
+      - name: Upload artifact for Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+          # Ha nincs fájl, hibázzon:
+          if-no-files-found: error
 
-                  for f in "${XLSX_FILES[@]}"; do
-                    mv "$f" "site/$f"
-                  done
-
-                  # Legyen egy stabil link is
-                  cp "site/${XLSX_FILES[0]}" "site/latest.xlsx"
-
-                  # Egyszerű index oldal
-                  DATE_UTC="$(date -u +'%Y-%m-%d %H:%M:%S UTC')"
-                  cat > site/index.html <<'HTML'
-                  <!doctype html>
-                  <html lang="en">
-                  <head>
-                    <meta charset="utf-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1">
-                    <title>pouet2excel – Downloads</title>
-                    <style>
-                      body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;max-width:720px;margin:40px auto;padding:0 16px;line-height:1.5}
-                      a{word-break:break-all}
-                      .card{border:1px solid #ddd;border-radius:12px;padding:16px;margin:12px 0}
-                      .small{color:#666;font-size:0.9em}
-                      code{background:#f6f8fa;border-radius:6px;padding:2px 6px}
-                    </style>
-                  </head>
-                  <body>
-                    <h1>pouet2excel – Generated files</h1>
-                    <p class="small">This page is auto-published by GitHub Actions.</p>
-                    <div id="downloads" class="card">
-                      <h2>Latest</h2>
-                      <p><a href="latest.xlsx" download>latest.xlsx</a></p>
-                    </div>
-                    <div class="card">
-                      <h2>All builds</h2>
-                      <ul>
-                  HTML
-
-                  # Fájl-lista beírása
-                  for f in $(ls -1 site/*.xlsx | sed 's#site/##'); do
-                    echo "    <li><a href=\"$f\" download>$f</a></li>" >> site/index.html
-                  done
-
-                  # Footer
-                  cat >> site/index.html <<HTML
-                      </ul>
-                    </div>
-                    <p class="small">Built: ${DATE_UTC}</p>
-                    <p class="small">Repo: <a href="https://github.com/${GITHUB_REPOSITORY}">${GITHUB_REPOSITORY}</a> • Commit: <code>${GITHUB_SHA}</code></p>
-                  </body>
-                  </html>
-                  HTML
-
-            - name: Upload artifact for Pages
-              uses: actions/upload-pages-artifact@v3
-              with:
-                  path: site
-                  # Ha nincs fájl, hibázzon:
-                  if-no-files-found: error
-
-    deploy:
-        needs: build
-        runs-on: ubuntu-latest
-        environment:
-            name: github-pages
-            url: ${{ steps.deployment.outputs.page_url }}
-        steps:
-            - name: Deploy to GitHub Pages
-              id: deployment
-              uses: actions/deploy-pages@v4
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
