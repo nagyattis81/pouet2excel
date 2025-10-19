@@ -1,9 +1,11 @@
-name: Build & Publish Excel to Pages
+name: Build & Publish Excel to Page
 
 on:
   push:
-    branches: [master, main]
+    branches: [master]
   workflow_dispatch:
+  schedule:
+    - cron: "0 20 * * WED"
 
 permissions:
   contents: read
@@ -36,19 +38,20 @@ jobs:
         env:
           GITHUB_WORKSPACE: ${{ github.workspace }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-          GITHUB_AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
-          GITHUB_TIMESTAMP: ${{ github.event.head_commit.timestamp }}
         run: |
           cargo run --release --bin build_site
+
+      - name: Ensure site directory not empty
+        run: |
+          if [ -z "$(ls -A site 2>/dev/null)" ]; then
+            echo "Error: site/ directory is empty"
+            exit 1
+          fi
 
       - name: Upload artifact for Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
-          # Ha nincs fájl, hibázzon:
-          if-no-files-found: error
 
   deploy:
     needs: build
