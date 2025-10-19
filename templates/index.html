@@ -38,11 +38,8 @@
     <p class="small">This page is auto-published by GitHub Actions.</p>
 
     <div class="card">
-      <h2>
-        Excel dump from:<a href="https://data.pouet.net/"
-          >pouët.net data dumps</a
-        >
-      </h2>
+      <h2>Excel dump</h2>
+      <a href="https://data.pouet.net/">pouët.net data dumps</a>
       {% if files | length > 0 %}
       <ul>
         {% for f in files %}
@@ -56,11 +53,13 @@
 
     <p class="small">
       Built: {{ built_at_utc }} • Repo:
-      <a href="https://github.com/{{ repo }}">{{ repo }}</a> • Commit:
-      <code>{{ sha }}</code>
-      <code>{{ commit_message }}</code>
-      <code>{{ author_name }}</code>
-      <code>{{ timestamp }}</code>
+      <a href="https://github.com/{{ repo }}">{{ repo }}</a>
+      <ul>
+        <li>sha: <code>{{ sha }}</code></li>
+        <li>message: <code>{{ commit_message }}</code></li>
+        <li>author: <code>{{ author_name }}</code></li>
+        <li>timestamp: <code>{{ timestamp }}</code></li>
+      </ul>
     </p>
   </body>
 </html>
