@@ -31,18 +31,35 @@
         border-radius: 6px;
         padding: 2px 6px;
       }
+
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #0b0d10;
+          color: #e5e7eb;
+        }
+        .card {
+          border-color: #2d333b;
+        }
+        code {
+          background: #111827;
+        }
+        a {
+          color: #8ab4f8;
+        }
+      }
     </style>
   </head>
   <body>
-    <h1>pouet2excel – Generated files</h1>
+    <h1>pouet2excel</h1>
     <p class="small">This page is auto-published by GitHub Actions.</p>
+    The data source:
+    <a href="https://data.pouet.net/">https://data.pouet.net/</a>
 
     <div class="card">
-      <h2>Excel dump</h2>
-      <a href="https://data.pouet.net/">pouët.net data dumps</a>
-      {% if files | length > 0 %}
+      <h2>Generated file</h2>
+      {% if data.files | length > 0 %}
       <ul>
-        {% for f in files %}
+        {% for f in data.files %}
         <li><a href="{{ f }}" download>{{ f }}</a></li>
         {% endfor %}
       </ul>
@@ -52,14 +69,8 @@
     </div>
 
     <p class="small">
-      Built: {{ built_at_utc }} • Repo:
-      <a href="https://github.com/{{ repo }}">{{ repo }}</a>
-      <ul>
-        <li>sha: <code>{{ sha }}</code></li>
-        <li>message: <code>{{ commit_message }}</code></li>
-        <li>author: <code>{{ author_name }}</code></li>
-        <li>timestamp: <code>{{ timestamp }}</code></li>
-      </ul>
+      Built: {{ data.built_at_utc }} • Repo:
+      <a href="https://github.com/{{ data.repo }}">{{ data.repo }}</a>
     </p>
   </body>
 </html>
