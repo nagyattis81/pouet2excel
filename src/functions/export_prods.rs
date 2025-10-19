@@ -1,6 +1,25 @@
-use crate::structs::dump_data::DumpData;
-use rust_xlsxwriter::Workbook;
+use crate::structs::{dump_data::DumpData, prod::Prod};
+use anyhow::Result;
+use rust_xlsxwriter::{worksheet::Worksheet, Workbook};
 use std::{error::Error, fs::File, io::BufReader};
+
+struct Column<'a> {
+    header: &'a str,
+    write: Box<dyn Fn(&mut Worksheet, u32, u16, &Prod) -> Result<()> + 'a>,
+}
+
+impl<'a> Column<'a> {
+    fn new<H, F>(header: H, write: F) -> Self
+    where
+        H: Into<&'a str>,
+        F: Fn(&mut Worksheet, u32, u16, &Prod) -> Result<()> + 'a,
+    {
+        Self {
+            header: header.into(),
+            write: Box::new(write),
+        }
+    }
+}
 
 pub fn export_prods(json_filename: String) -> Result<(), Box<dyn Error>> {
     let file = File::open(&json_filename)?;
@@ -16,69 +35,135 @@ pub fn export_prods(json_filename: String) -> Result<(), Box<dyn Error>> {
     let mut workbook = Workbook::new();
     let worksheet = workbook.add_worksheet();
 
-    worksheet.write_string(0, 0, "Id")?;
-    worksheet.write_string(0, 1, "Name")?;
-    worksheet.write_string(0, 2, "Groups")?;
-    worksheet.write_string(0, 3, "Type")?;
-    worksheet.write_string(0, 4, "Date")?;
-    worksheet.write_string(0, 5, "Down")?;
-    worksheet.write_string(0, 6, "Pig")?;
-    worksheet.write_string(0, 7, "Up")?;
-    worksheet.write_string(0, 8, "Avg")?;
-    worksheet.write_string(0, 9, "Download")?;
-
-    if let Some(prods) = &dump.prods {
-        for (row, prod) in prods.iter().enumerate() {
-            let excel_row = (row + 1) as u32;
-
-            if let Some(value) = prod.id {
-                worksheet.write_string(excel_row, 0, format!("{}", value))?;
+    let columns: Vec<Column> = vec![
+        Column::new("Name", |ws, row, col, p| {
+            if let Some(v) = &p.name {
+                ws.write_string(row, col, v)?;
             }
-
-            if let Some(value) = &prod.name {
-                worksheet.write_string(excel_row, 1, value)?;
-            }
-
-            if let Some(value) = &prod.groups {
-                let joined = value
+            Ok(())
+        }),
+        Column::new("Groups", |ws, row, col, p| {
+            if let Some(v) = &p.groups {
+                let joined = v
                     .iter()
                     .filter_map(|t| t.name.clone())
                     .collect::<Vec<_>>()
                     .join(", ");
-                worksheet.write_string(excel_row, 2, &joined)?;
+                if !joined.is_empty() {
+                    ws.write_string(row, col, &joined)?;
+                }
             }
-
-            if let Some(value) = &prod.prod_type {
-                let joined = value
+            Ok(())
+        }),
+        Column::new("Type", |ws, row, col, p| {
+            if let Some(v) = &p.prod_type {
+                let joined = v
                     .iter()
                     .map(|t| format!("{:?}", t))
                     .collect::<Vec<_>>()
                     .join(", ");
-                worksheet.write_string(excel_row, 3, &joined)?;
+                if !joined.is_empty() {
+                    ws.write_string(row, col, &joined)?;
+                }
             }
-
-            if let Some(value) = &prod.added_date {
-                worksheet.write_string(excel_row, 4, value)?;
+            Ok(())
+        }),
+        Column::new("Platform", |ws, row, col, p| {
+            if let Some(v) = &p.platforms {
+                let joined = v
+                    .values()
+                    .filter_map(|pl| pl.name.clone())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                if !joined.is_empty() {
+                    ws.write_string(row, col, &joined)?;
+                }
             }
-
-            if let Some(value) = &prod.votedown {
-                worksheet.write_number(excel_row, 5, *value)?;
+            Ok(())
+        }),
+        Column::new("Party", |ws, row, col, p| {
+            if let Some(party) = &p.party {
+                if let Some(name) = party.name.as_deref() {
+                    ws.write_string(row, col, name)?;
+                }
             }
-
-            if let Some(value) = &prod.votepig {
-                worksheet.write_number(excel_row, 6, *value)?;
+            Ok(())
+        }),
+        Column::new("Place", |ws, row, col, p| {
+            if let Some(v) = &p.party_place {
+                ws.write_number(row, col, *v)?;
             }
-
-            if let Some(value) = &prod.voteup {
-                worksheet.write_number(excel_row, 7, *value)?;
+            Ok(())
+        }),
+        Column::new("Year", |ws, row, col, p| {
+            if let Some(v) = &p.party_year {
+                ws.write_number(row, col, *v)?;
             }
-
-            if let Some(value) = &prod.voteavg {
-                worksheet.write_number(excel_row, 8, *value)?;
+            Ok(())
+        }),
+        Column::new("Added", |ws, row, col, p| {
+            if let Some(v) = &p.added_date {
+                ws.write_string(row, col, v)?;
             }
+            Ok(())
+        }),
+        Column::new("Release", |ws, row, col, p| {
+            if let Some(v) = &p.release_date {
+                ws.write_string(row, col, v)?;
+            }
+            Ok(())
+        }),
+        Column::new("Down", |ws, row, col, p| {
+            if let Some(v) = p.votedown {
+                ws.write_number(row, col, v)?;
+            }
+            Ok(())
+        }),
+        Column::new("Pig", |ws, row, col, p| {
+            if let Some(v) = p.votepig {
+                ws.write_number(row, col, v)?;
+            }
+            Ok(())
+        }),
+        Column::new("Up", |ws, row, col, p| {
+            if let Some(v) = p.voteup {
+                ws.write_number(row, col, v)?;
+            }
+            Ok(())
+        }),
+        Column::new("Avg", |ws, row, col, p| {
+            if let Some(v) = p.voteavg {
+                ws.write_number(row, col, v)?;
+            }
+            Ok(())
+        }),
+        Column::new("Download", |ws, row, col, p| {
+            if let Some(v) = &p.download {
+                ws.write_string(row, col, v)?;
+            }
+            Ok(())
+        }),
+        Column::new("Link", |ws, row, col, p| {
+            if let Some(v) = p.id {
+                ws.write_string(
+                    row,
+                    col,
+                    format!("https://www.pouet.net/prod.php?which={}", v),
+                )?;
+            }
+            Ok(())
+        }),
+    ];
 
-            if let Some(value) = &prod.download {
-                worksheet.write_string(excel_row, 9, value)?;
+    for (col_idx, col) in columns.iter().enumerate() {
+        worksheet.write_string(0, col_idx as u16, col.header)?;
+    }
+
+    if let Some(prods) = &dump.prods {
+        for (r, prod) in prods.iter().enumerate() {
+            let row = (r as u32) + 1;
+            for (c, col) in columns.iter().enumerate() {
+                (col.write)(worksheet, row, c as u16, prod)?;
             }
         }
     }
