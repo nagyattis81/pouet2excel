@@ -37,6 +37,9 @@ jobs:
           GITHUB_WORKSPACE: ${{ github.workspace }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
+          GITHUB_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          GITHUB_AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
+          GITHUB_TIMESTAMP: ${{ github.event.head_commit.timestamp }}
         run: |
           cargo run --release --bin build_site
 

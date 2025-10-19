@@ -13,6 +13,9 @@ struct PageData {
     built_at_utc: String,
     repo: String,
     sha: String,
+    commit_message: String,
+    author_name: String,
+    timestamp: String,
 }
 
 fn copy_xlsx_to_site(repo_root: &Path) -> io::Result<Vec<String>> {
@@ -58,6 +61,9 @@ fn main() -> anyhow::Result<()> {
     let built_at_utc = Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string();
     let repo = env::var("GITHUB_REPOSITORY").unwrap_or_else(|_| "unknown/unknown".into());
     let sha = env::var("GITHUB_SHA").unwrap_or_else(|_| "unknown".into());
+    let commit_message = env::var("GITHUB_COMMIT_MESSAGE").unwrap_or_else(|_| "unknown".into());
+    let author_name = env::var("GITHUB_AUTHOR_NAME").unwrap_or_else(|_| "unknown".into());
+    let timestamp = env::var("GITHUB_TIMESTAMP").unwrap_or_else(|_| "unknown".into());
 
     let data = PageData {
         latest: files.last().cloned().or(None),
@@ -65,6 +71,9 @@ fn main() -> anyhow::Result<()> {
         built_at_utc,
         repo,
         sha,
+        commit_message,
+        author_name,
+        timestamp,
     };
 
     let tera = Tera::new("templates/**/*")?;
@@ -74,6 +83,9 @@ fn main() -> anyhow::Result<()> {
     ctx.try_insert("built_at_utc", &data.built_at_utc)?;
     ctx.try_insert("repo", &data.repo)?;
     ctx.try_insert("sha", &data.sha)?;
+    ctx.try_insert("commit_message", &data.commit_message)?;
+    ctx.try_insert("author_name", &data.author_name)?;
+    ctx.try_insert("timestamp", &data.timestamp)?;
 
     let html = tera.render("index.html", &ctx)?;
     let site_dir = repo_root.join("site");

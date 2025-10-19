@@ -38,16 +38,11 @@
     <p class="small">This page is auto-published by GitHub Actions.</p>
 
     <div class="card">
-      <h2>Latest</h2>
-      {% if latest %}
-      <p><a href="{{ latest }}" download>{{ latest }}</a></p>
-      {% else %}
-      <p>No files yet.</p>
-      {% endif %}
-    </div>
-
-    <div class="card">
-      <h2>All builds</h2>
+      <h2>
+        Excel dump from:<a href="https://data.pouet.net/"
+          >pouët.net data dumps</a
+        >
+      </h2>
       {% if files | length > 0 %}
       <ul>
         {% for f in files %}
@@ -63,6 +58,9 @@
       Built: {{ built_at_utc }} • Repo:
       <a href="https://github.com/{{ repo }}">{{ repo }}</a> • Commit:
       <code>{{ sha }}</code>
+      <code>{{ commit_message }}</code>
+      <code>{{ author_name }}</code>
+      <code>{{ timestamp }}</code>
     </p>
   </body>
 </html>
