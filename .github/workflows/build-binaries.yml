@@ -1,5 +1,8 @@
 name: Build (Linux, macOS, Windows)
 
+permissions:
+    contents: write
+
 on:
     push:
         branches: ["*"]
